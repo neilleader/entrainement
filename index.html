@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
@@ -542,34 +542,6 @@ select {
             container.innerHTML = '<p style="grid-column: span 3; text-align:center; color:var(--text-muted);">Aucun document dans cette catégorie.</p>';
         }
     }
-
-    // Initialise l'affichage au chargement
-    showDocCategory('all');
-
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
-
-<script>
-    // --- 1. CONFIGURATION (À REMPLIR) ---
-    const firebaseConfig = {
-        apiKey: "$2a$10$ZL6gJ9Al7JzcquZOqKWpr.HMCZuy8DHvAGQs614CinXvOBlvarsPW", 
-        authDomain: "saje-1f42b.firebaseapp.com",
-        databaseURL: "https://saje-1f42b-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "saje-1f42b",
-        storageBucket: "saje-1f42b.appspot.com",
-        messagingSenderId: "TON_SENDER_ID",
-        appId: "TON_APP_ID"
-    };
-
-    // Initialisation
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const auth = firebase.auth();
-
-    let jugements = [];
-    let chefs = [];
-    let currentSelection = [];
 </script>
 </body>
 </html>
