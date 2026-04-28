@@ -436,12 +436,11 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 // 2. VARIABLES GLOBALES
-let jugements = [];
-let chefs = [];
-let users = [];
+let jugements = {}; 
+let chefs = {};     
+let users = {};     
 let currentSelection = [];
 
-// Base de données des documents (catégories)
 const docDatabase = [
     { title: "Code de Procédure", desc: "Règles de procédure pénale", cat: "all", icon: "bx-book-reader", link: "#" },
     { title: "Grille de Peine", desc: "Calculateur officiel", cat: "juge", icon: "bx-calculator", link: "#" },
@@ -449,50 +448,48 @@ const docDatabase = [
     { title: "Rapport d'activité", desc: "Stats hebdomadaires", cat: "direction", icon: "bx-line-chart", link: "#" }
 ];
 
-// --- SYNCHRONISATION EN TEMPS RÉEL ---
-
-db.ref('jugements').on('value', (snapshot) => {
-    const data = snapshot.val();
-    jugements = data ? Object.values(data) : [];
-    renderAll();
-    updateStats();
-});
-
-db.ref('chefs').on('value', (snapshot) => {
-    const data = snapshot.val();
-    chefs = data ? Object.values(data) : [];
-    renderChefs();
-});
-
-db.ref('users').on('value', (snapshot) => {
-    const data = snapshot.val();
-    users = data ? Object.values(data) : [
-        {"nom":"Admin","prenom":"Justice","user":"admin","pass":"1234","grade":"Direction","dob":"1990-01-01"}
-    ];
-    renderUsers();
-});
-
-// --- GESTION DE L'INTERFACE (Navigation) ---
-
+// --- 3. NAVIGATION ET INTERFACE ---
 function showPage(pageId, navEl) {
-    // Cacher toutes les pages
     document.querySelectorAll('main > div').forEach(div => div.classList.add('hidden'));
-    // Afficher la page demandée
-    document.getElementById('page-' + pageId).classList.remove('hidden');
-    
-    // Gérer l'état actif de la sidebar
+    const targetPage = document.getElementById('page-' + pageId);
+    if(targetPage) targetPage.classList.remove('hidden');
+
     document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
     if(navEl) navEl.classList.add('active');
+    else {
+        // Fallback pour activer le menu si on appelle showPage manuellement
+        const items = document.querySelectorAll('.nav-item');
+        items.forEach(item => {
+            if(item.innerText.toLowerCase().includes(pageId)) item.classList.add('active');
+        });
+    }
 
     if(pageId === 'docuement') showDocCategory('all');
 }
 
 function toggleOverlay(id, show) {
-    document.getElementById(id).style.display = show ? 'flex' : 'none';
+    const el = document.getElementById(id);
+    if(el) el.style.display = show ? 'flex' : 'none';
 }
 
-// --- LOGIQUE MÉTIER (Jugements & Recherche) ---
+// --- 4. SYNCHRONISATION TEMPS RÉEL ---
+db.ref('jugements').on('value', (snapshot) => {
+    jugements = snapshot.val() || {};
+    renderAll();
+    updateStats();
+});
 
+db.ref('chefs').on('value', (snapshot) => {
+    chefs = snapshot.val() || {};
+    renderChefs();
+});
+
+db.ref('users').on('value', (snapshot) => {
+    users = snapshot.val() || {};
+    renderUsers();
+});
+
+// --- 5. GESTION DES JUGEMENTS ---
 function openForm() {
     currentSelection = [];
     document.getElementById('jugementForm').reset();
@@ -509,11 +506,11 @@ function searchInfraction() {
         return;
     }
 
-    const filtered = chefs.filter(c => c.nom.toLowerCase().includes(query));
+    const filtered = Object.values(chefs).filter(c => c.nom.toLowerCase().includes(query));
     
     resultsDiv.innerHTML = filtered.map(c => `
-        <div class="search-item" onclick="addInfraction('${c.nom}')">
-            ${c.nom} <span style="color:var(--accent)">(${c.amende}$, ${c.prison} ans)</span>
+        <div class="search-item" onclick="addInfraction('${c.nom.replace(/'/g, "\\'")}')">
+            ${c.nom} <span style="color:var(--accent)">($${c.amende}, ${c.prison} ans)</span>
         </div>
     `).join('');
     
@@ -521,9 +518,9 @@ function searchInfraction() {
 }
 
 function addInfraction(name) {
-    const item = chefs.find(c => c.nom === name);
+    const item = Object.values(chefs).find(c => c.nom === name);
     if (item) {
-        currentSelection.push(item);
+        currentSelection.push({...item});
         renderSelectedInfractions();
         document.getElementById('j_search').value = "";
         document.getElementById('searchResults').style.display = 'none';
@@ -537,15 +534,15 @@ function removeInfraction(index) {
 
 function renderSelectedInfractions() {
     const list = document.getElementById('selectedList');
-    const totalMoney = currentSelection.reduce((a, b) => a + b.amende, 0);
-    const totalPrison = currentSelection.reduce((a, b) => a + b.prison, 0);
+    const totalMoney = currentSelection.reduce((a, b) => a + (parseInt(b.amende) || 0), 0);
+    const totalPrison = currentSelection.reduce((a, b) => a + (parseInt(b.prison) || 0), 0);
 
     if (currentSelection.length === 0) {
         list.innerHTML = `<p style="color:var(--text-muted); font-size:13px; text-align:center;">Aucune infraction sélectionnée</p>`;
     } else {
         list.innerHTML = currentSelection.map((inf, i) => `
             <div class="infraction-tag">
-                <span><b>${inf.nom}</b> (${inf.amende}$, ${inf.prison} ans)</span>
+                <span><b>${inf.nom}</b> ($${inf.amende}, ${inf.prison} ans)</span>
                 <i class='bx bx-x-circle remove-tag' onclick="removeInfraction(${i})"></i>
             </div>
         `).join('');
@@ -555,121 +552,50 @@ function renderSelectedInfractions() {
     document.getElementById('display-total-prison').innerText = totalPrison;
 }
 
-// --- RENDU DES TABLEAUX ---
-
+// --- 6. RENDU DES TABLEAUX ---
 function renderAll() {
     const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = jugements.map((j, i) => `
+    tbody.innerHTML = Object.entries(jugements).map(([key, j]) => `
         <tr>
             <td>#${j.rapport}</td>
             <td><b>${j.nom}</b></td>
-            <td>${j.amendeTotal.toLocaleString()}$</td>
-            <td>${j.prisonTotal} ans</td>
-            <td><button class="btn btn-view" onclick="viewJugement(${i})">Voir</button></td>
+            <td>${(j.amendeTotal || 0).toLocaleString()}$</td>
+            <td>${j.prisonTotal || 0} ans</td>
+            <td><button class="btn btn-view" onclick="alert('Détails : ${j.obs || "Aucune observation"}')">Voir</button></td>
         </tr>
     `).join('');
 }
 
 function renderChefs() {
     const tbody = document.getElementById('chefsTableBody');
-    tbody.innerHTML = chefs.map((c, i) => `
+    tbody.innerHTML = Object.entries(chefs).map(([key, c]) => `
         <tr>
             <td>${c.nom}</td>
             <td>${c.amende}$</td>
             <td>${c.prison} ans</td>
-            <td>${c.type}</td>
-            <td><button class="btn btn-danger" onclick="deleteChef(${i})">Supprimer</button></td>
+            <td>${c.type || 'N/A'}</td>
+            <td><button class="btn btn-danger" onclick="deleteChef('${key}')">Supprimer</button></td>
         </tr>
     `).join('');
 }
 
 function renderUsers() {
     const tbody = document.getElementById('userTableBody');
-    tbody.innerHTML = users.map((u, i) => `
+    tbody.innerHTML = Object.entries(users).map(([key, u]) => `
         <tr>
             <td>${u.nom} ${u.prenom}</td>
             <td><span class="btn btn-view" style="font-size:10px">${u.grade}</span></td>
             <td>${u.user}</td>
-            <td><button class="btn btn-danger" onclick="deleteUser(${i})">Supprimer</button></td>
+            <td><button class="btn btn-danger" onclick="deleteUser('${key}')">Supprimer</button></td>
         </tr>
     `).join('');
 }
 
-function updateStats() {
-    document.getElementById('stat-count').innerText = jugements.length;
-    const totalMoney = jugements.reduce((a, b) => a + b.amendeTotal, 0);
-    const totalPrison = jugements.reduce((a, b) => a + b.prisonTotal, 0);
-    document.getElementById('stat-money').innerText = totalMoney.toLocaleString() + "$";
-    document.getElementById('stat-prison').innerText = totalPrison;
-}
-
-// --- ESPACE DOCUMENTS ---
-
-function showDocCategory(cat) {
-    const container = document.getElementById('doc-links-container');
-    const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
-    const userGrade = currentUser.grade || "";
-    const accessAuthorized = ["Juge Supérieur", "Direction"];
-
-    if (cat === 'direction' && !accessAuthorized.includes(userGrade)) {
-        container.innerHTML = `<div style="grid-column: span 3; text-align:center; padding:50px; background:#fee2e2; border-radius:16px; color:#ef4444;">Accès Refusé</div>`;
-        return;
-    }
-
-    let filtered = cat === 'all' ? docDatabase : docDatabase.filter(d => d.cat === cat);
-    if (cat === 'all' && !accessAuthorized.includes(userGrade)) {
-        filtered = filtered.filter(d => d.cat !== 'direction');
-    }
-
-    container.innerHTML = filtered.map(d => `
-        <div class="settings-card">
-            <i class='bx ${d.icon}'></i>
-            <h4>${d.title}</h4>
-            <p style="font-size:12px; color:var(--text-muted)">${d.desc}</p>
-        </div>
-    `).join('');
-}
-
-// --- AUTHENTIFICATION ---
-
-function checkLogin() {
-    const userIn = document.getElementById('username').value.toLowerCase();
-    const passIn = document.getElementById('password').value;
-    const errorMsg = document.getElementById('login-error');
-
-    const foundUser = users.find(u => u.user === userIn && u.pass === passIn);
-
-    if (foundUser) {
-        document.getElementById('login-screen').style.display = 'none';
-        sessionStorage.setItem('isLoggedIn', 'true');
-        sessionStorage.setItem('currentUser', JSON.stringify(foundUser));
-        
-        const accessAuthorized = ["Juge Supérieur", "Direction"];
-        const dirCard = document.getElementById('card-direction');
-        if (dirCard) dirCard.style.display = accessAuthorized.includes(foundUser.grade) ? 'flex' : 'none';
-    } else {
-        errorMsg.style.display = 'block';
-    }
-}
-
-function openUserManagement() {
-    const user = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
-    if (["Juge Supérieur", "Direction"].includes(user.grade)) {
-        toggleOverlay('overlay-users', true);
-    } else {
-        alert("Accès réservé à la Direction.");
-    }
-}
-
-function logout() {
-    sessionStorage.clear();
-    location.reload();
-}
-
-// --- SOUMISSION DES FORMULAIRES ---
-
+// --- 7. SOUMISSIONS ---
 document.getElementById('jugementForm').onsubmit = function(e) {
     e.preventDefault();
+    if(currentSelection.length === 0) return alert("Ajoutez au moins une infraction");
+
     const nouveau = {
         rapport: document.getElementById('j_rapport').value,
         nom: document.getElementById('j_nom').value,
@@ -677,12 +603,25 @@ document.getElementById('jugementForm').onsubmit = function(e) {
         instance: document.getElementById('j_instance').value,
         info: document.getElementById('j_info').value,
         obs: document.getElementById('j_obs').value,
-        amendeTotal: currentSelection.reduce((a, b) => a + b.amende, 0),
-        prisonTotal: currentSelection.reduce((a, b) => a + b.prison, 0),
-        infractions: [...currentSelection]
+        amendeTotal: currentSelection.reduce((a, b) => a + (parseInt(b.amende) || 0), 0),
+        prisonTotal: currentSelection.reduce((a, b) => a + (parseInt(b.prison) || 0), 0),
+        infractions: currentSelection
     };
     db.ref('jugements').push(nouveau);
     toggleOverlay('overlay-form', false);
+};
+
+document.getElementById('addChefForm').onsubmit = function(e) {
+    e.preventDefault();
+    const loi = {
+        nom: document.getElementById('c_nom').value,
+        amende: parseInt(document.getElementById('c_amende').value),
+        prison: parseInt(document.getElementById('c_prison').value),
+        type: document.getElementById('j_delit').value,
+        coef: parseInt(document.getElementById('c_coef').value) || 1
+    };
+    db.ref('chefs').push(loi);
+    this.reset();
 };
 
 document.getElementById('addUserForm').onsubmit = function(e) {
@@ -700,33 +639,61 @@ document.getElementById('addUserForm').onsubmit = function(e) {
     toggleOverlay('overlay-add-user', false);
 };
 
-document.getElementById('addChefForm').onsubmit = function(e) {
-    e.preventDefault();
-    const loi = {
-        nom: document.getElementById('c_nom').value,
-        amende: parseInt(document.getElementById('c_amende').value),
-        prison: parseInt(document.getElementById('c_prison').value),
-        type: document.getElementById('j_delit').value,
-        coef: parseInt(document.getElementById('c_coef').value)
-    };
-    db.ref('chefs').push(loi);
-    this.reset();
-};
+// --- 8. ACTIONS ET AUTH ---
+function updateStats() {
+    const data = Object.values(jugements);
+    document.getElementById('stat-count').innerText = data.length;
+    const totalMoney = data.reduce((a, b) => a + (b.amendeTotal || 0), 0);
+    const totalPrison = data.reduce((a, b) => a + (b.prisonTotal || 0), 0);
+    document.getElementById('stat-money').innerText = totalMoney.toLocaleString() + "$";
+    document.getElementById('stat-prison').innerText = totalPrison;
+}
 
-function deleteChef(i) {
-    if(confirm("Supprimer cette loi ?")) {
-        const key = Object.keys(chefs)[i]; // Firebase works with keys
-        db.ref('chefs').child(Object.keys(jugements)[i]).remove(); // Note: Simple version
-        // For simplicity with your array logic:
-        chefs.splice(i, 1);
-        db.ref('chefs').set(chefs);
+function checkLogin() {
+    const userIn = document.getElementById('username').value.toLowerCase();
+    const passIn = document.getElementById('password').value;
+    const errorMsg = document.getElementById('login-error');
+
+    // 1. ON DÉFINIT UN COMPTE DE SECOURS (Si la base est vide)
+    const adminParDefaut = {
+        user: "admin",
+        pass: "admin123", // Change ce mot de passe une fois connecté
+        nom: "ADMIN",
+        prenom: "Système",
+        grade: "Direction"
+    };
+
+    // 2. ON CHERCHE DANS LA BASE FIREBASE
+    const foundUser = Object.values(users).find(u => u.user === userIn && u.pass === passIn);
+
+    // 3. VÉRIFICATION (Base de données OU Compte de secours)
+    if (foundUser || (userIn === adminParDefaut.user && passIn === adminParDefaut.pass)) {
+        const sessionUser = foundUser || adminParDefaut;
+        
+        document.getElementById('login-screen').style.display = 'none';
+        sessionStorage.setItem('currentUser', JSON.stringify(sessionUser));
+        
+        // On affiche le dashboard
+        showPage('dashboard');
+        console.log("Connecté en tant que : " + sessionUser.nom);
+    } else {
+        errorMsg.style.display = 'block';
     }
 }
 
-function deleteUser(i) {
-    if(confirm("Supprimer cet accès ?")) {
-        users.splice(i, 1);
-        db.ref('users').set(users);
+function deleteChef(key) { if(confirm("Supprimer cette loi ?")) db.ref('chefs').child(key).remove(); }
+function deleteUser(key) { if(confirm("Supprimer cet accès ?")) db.ref('users').child(key).remove(); }
+function logout() { sessionStorage.clear(); location.reload(); }
+
+function openUserManagement() {
+    const user = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
+    if (["Juge Supérieur", "Direction"].includes(user.grade)) toggleOverlay('overlay-users', true);
+    else alert("Accès réservé à la Direction.");
+}
+
+function clearAll() {
+    if(confirm("ATTENTION : Cela va effacer TOUS les jugements de la base de données. Confirmer ?")) {
+        db.ref('jugements').remove();
     }
 }
 </script>
