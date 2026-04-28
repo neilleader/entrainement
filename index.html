@@ -109,6 +109,20 @@ select {
     margin-top: 5px;
 }
 
+.glass-login {
+    background: rgba(30, 41, 59, 0.4);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+#login-screen input::placeholder {
+    color: #94a3b8;
+}
+
+#login-screen input:focus {
+    border-color: #2563eb !important;
+}
+
 /* Ajoute une petite flèche discrète à droite pour montrer que c'est un menu */
 select {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
@@ -122,6 +136,81 @@ select {
 </head>
 <body>
 
+<div id="login-screen" style="position: fixed; inset: 0; z-index: 9999; background: #020617; display: flex; align-items: center; justify-content: center; padding: 24px;">
+    <div class="glass-login" style="max-width: 400px; width: 100%; padding: 40px; border-radius: 40px; text-align: center; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); margin: auto;">
+        <div style="margin-bottom: 40px;">
+            <div style="display: inline-flex; align-items: center; justify-content: center; width: 80px; height: 80px; background: #2563eb; border-radius: 24px; margin-bottom: 16px; shadow: 0 10px 15px rgba(37,99,235,0.2);">
+                <i class='bx bxs-shield-quarter' style="font-size: 40px; color: white;"></i>
+            </div>
+            <h1 style="color: white; font-size: 30px; font-weight: 800; letter-spacing: -1px; text-transform: uppercase; margin: 0;">Justice OS</h1>
+            <p style="color: #64748b; font-size: 10px; text-transform: uppercase; tracking: 2px; margin-top: 8px;">Accès Sécurisé - Personnel Autorisé</p>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+            <input type="text" id="username" placeholder="Identifiant" style="width: 100%; padding: 16px; border-radius: 16px; background: #1e293b; border: 1px solid #334155; color: white; outline: none;">
+            <input type="password" id="password" placeholder="Mot de passe" style="width: 100%; padding: 16px; border-radius: 16px; background: #1e293b; border: 1px solid #334155; color: white; outline: none;">
+            
+            <button onclick="checkLogin()" style="width: 100%; background: #2563eb; color: white; padding: 16px; border-radius: 16px; font-weight: 800; text-transform: uppercase; border: none; cursor: pointer; transition: 0.3s; margin-top: 10px;">
+                Authentification
+            </button>
+            
+            <p id="login-error" style="color: #ef4444; font-size: 11px; font-weight: 700; text-transform: uppercase; display: none; margin-top: 10px;">
+                Identifiants incorrects
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="fs-overlay" id="overlay-users">
+    <div class="form-container">
+        <div class="header">
+            <h1>Gestion du Personnel</h1>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-accent" onclick="toggleOverlay('overlay-add-user', true)"><i class='bx bx-plus'></i> Créer un utilisateur</button>
+                <button class="btn btn-view" onclick="toggleOverlay('overlay-users', false)">Fermer</button>
+            </div>
+        </div>
+        <div class="section-box">
+            <table>
+                <thead>
+                    <tr><th>Personnel</th><th>Grade</th><th>Identifiant</th><th>Action</th></tr>
+                </thead>
+                <tbody id="userTableBody">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="fs-overlay" id="overlay-add-user" style="background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(5px);">
+    <div class="form-container" style="max-width: 600px; margin-top: 50px; background: white; padding: 30px; border-radius: 20px;">
+        <div class="header">
+            <h2>Nouvel Utilisateur</h2>
+        </div>
+        <form id="addUserForm" class="form-grid">
+            <div class="form-group"><label>Nom</label><input type="text" id="u_nom" required></div>
+            <div class="form-group"><label>Prénom</label><input type="text" id="u_prenom" required></div>
+            <div class="form-group full"><label>Date de naissance</label><input type="date" id="u_dob" required></div>
+            <div class="form-group"><label>Identifiant</label><input type="text" id="u_user" required></div>
+            <div class="form-group"><label>Mot de passe</label><input type="password" id="u_pass" required></div>
+            <div class="form-group full">
+                <label>Grade</label>
+                <select id="u_grade" required style="margin-top:0">
+                    <option value="Stagiaire">Stagiaire</option>
+                    <option value="Greffier">Greffier</option>
+                    <option value="Procureur">Procureur</option>
+                    <option value="Juge">Juge</option>
+                    <option value="Juge Supérieur">Juge Supérieur</option>
+                </select>
+            </div>
+            <div class="full" style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="submit" class="btn btn-accent" style="flex: 1; justify-content: center;">CRÉER LE COMPTE</button>
+                <button type="button" class="btn btn-view" onclick="toggleOverlay('overlay-add-user', false)">ANNULER</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="layout">
 <aside class="sidebar">
   <div class="logo"><i class='bx bxs-shield-quarter'></i> Outil de Justice</div>
@@ -132,6 +221,15 @@ select {
     <a class="nav-item" onclick="showPage('docuement', this)">📄 Document</a>
     <a class="nav-item" onclick="showPage('settings', this)">⚙️ Paramètres</a>
   </div>
+
+<div style="margin-top: auto; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 5px;">
+    <a class="nav-item" onclick="openUserManagement()" style="color: #94a3b8;">
+        <i class='bx bxs-user-account'></i> Gérer les accès
+    </a>
+    <a class="nav-item" onclick="logout()" style="color: #ef4444;">
+        <i class='bx bx-log-out'></i> Déconnexion
+    </a>
+</div>
 </aside>
 
   <main class="main">
@@ -172,7 +270,7 @@ select {
           <i class='bx bxs-gavel'></i>
           <h4>Espace Juge</h4>
         </div>
-        <div class="settings-card" onclick="showDocCategory('direction')">
+        <div class="settings-card" id="card-direction" onclick="showDocCategory('direction')">
           <i class='bx bxs-crown' style="color:#fbbf24"></i>
           <h4>Direction</h4>
         </div>
@@ -325,79 +423,55 @@ select {
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
 <script>
-    // Initialisation des données
-    let jugements = JSON.parse(localStorage.getItem('jugements') || '[]');
-    let chefs = JSON.parse(localStorage.getItem('chefs') || '[{"nom":"Homicide","amende":50000,"prison":120,"type":"Crime","coef":1}]');
+    // 1. CONFIGURATION
+    const firebaseConfig = {
+        databaseURL: "https://saje-1f42b-default-rtdb.europe-west1.firebasedatabase.app" // <--- METS TON URL ICI
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // 2. VARIABLES GLOBALES (Synchronisées)
+    let jugements = [];
+    let chefs = [];
+    let users = [];
     let currentSelection = [];
 
-    function showPage(id, el) {
-        document.querySelectorAll('main > div').forEach(d => d.classList.add('hidden'));
-        const targetPage = document.getElementById('page-' + id);
-        if (targetPage) targetPage.classList.remove('hidden');
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        if (el) el.classList.add('active');
-    }
+    // --- SYNCHRONISATION EN TEMPS RÉEL ---
 
-    function toggleOverlay(id, show) {
-        document.getElementById(id).style.display = show ? 'flex' : 'none';
-    }
+    // Écouter les Jugements
+    db.ref('jugements').on('value', (snapshot) => {
+        const data = snapshot.val();
+        jugements = data ? Object.values(data) : [];
+        renderAll();
+    });
 
-    function searchInfraction() {
-        const val = document.getElementById('j_search').value.toLowerCase();
-        const res = document.getElementById('searchResults');
-        if(val.length < 1) { res.style.display = 'none'; return; }
-        
-        const filtered = chefs.filter(c => c.nom.toLowerCase().includes(val));
-        res.innerHTML = filtered.map(c => `
-            <div class="search-item" onclick="addInfraction('${c.nom.replace(/'/g, "\\'")}', ${c.amende}, ${c.prison})">
-                ${c.nom} (${c.amende}$)
-            </div>`).join('');
-        res.style.display = 'block';
-    }
+    // Écouter le Code Pénal
+    db.ref('chefs').on('value', (snapshot) => {
+        const data = snapshot.val();
+        chefs = data ? Object.values(data) : [
+            {"nom":"Homicide","amende":50000,"prison":120,"type":"Crime","coef":1}
+        ];
+        renderChefs();
+    });
 
-    function addInfraction(nom, amende, prison) {
-        currentSelection.push({nom, amende, prison});
-        document.getElementById('j_search').value = "";
-        document.getElementById('searchResults').style.display = 'none';
-        renderCurrentSelection();
-    }
+    // Écouter les Utilisateurs
+    db.ref('users').on('value', (snapshot) => {
+        const data = snapshot.val();
+        // On s'assure qu'il y a toujours au moins l'admin par défaut s'il n'y a rien en base
+        users = data ? Object.values(data) : [
+            {"nom":"Admin","prenom":"Justice","user":"admin","pass":"1234","grade":"Direction","dob":"1990-01-01"}
+        ];
+        renderUsers();
+    });
 
-    function removeInfraction(i) {
-        currentSelection.splice(i, 1);
-        renderCurrentSelection();
-    }
+    // --- FONCTIONS DE SAUVEGARDE (PUSH VERS CLOUD) ---
 
-    function renderCurrentSelection() {
-        const list = document.getElementById('selectedList');
-        let totalM = 0; 
-        let totalP = 0;
-
-        if (currentSelection.length === 0) {
-            list.innerHTML = '<p style="color:var(--text-muted); font-size:13px; text-align:center;">Aucune infraction sélectionnée</p>';
-        } else {
-            list.innerHTML = currentSelection.map((c, i) => {
-                totalM += c.amende; 
-                totalP += c.prison;
-                return `
-                    <div class="infraction-tag">
-                        <span><b>${c.nom}</b> (${c.amende}$ / ${c.prison} ans)</span>
-                        <i class='bx bx-x-circle remove-tag' onclick="removeInfraction(${i})"></i>
-                    </div>`;
-            }).join('');
-        }
-        document.getElementById('display-total-money').innerText = totalM.toLocaleString();
-        document.getElementById('display-total-prison').innerText = totalP;
-    }
-
-    function openForm() {
-        document.getElementById('jugementForm').reset();
-        document.getElementById('save-btn').classList.remove('hidden');
-        currentSelection = [];
-        renderCurrentSelection();
-        toggleOverlay('overlay-form', true);
-    }
-
+    // Enregistrer un Jugement
     document.getElementById('jugementForm').onsubmit = function(e) {
         e.preventDefault();
         const nouveau = {
@@ -411,141 +485,90 @@ select {
             prisonTotal: currentSelection.reduce((a, b) => a + b.prison, 0),
             infractions: [...currentSelection]
         };
-        jugements.push(nouveau);
-        localStorage.setItem('jugements', JSON.stringify(jugements));
+        
+        db.ref('jugements').push(nouveau); // Envoi au cloud
         toggleOverlay('overlay-form', false);
-        renderAll(); 
     };
 
-    function renderAll() {
-        const body = document.getElementById('tableBody');
-        if (!body) return;
-        body.innerHTML = jugements.map((j, index) => `
-            <tr>
-                <td>#${j.rapport}</td>
-                <td><b>${j.nom}</b></td>
-                <td>${j.amendeTotal.toLocaleString()}$</td>
-                <td>${j.prisonTotal} ans</td>
-                <td><button class="btn btn-view" onclick="viewDossier(${index})">Voir</button></td>
-            </tr>
-        `).join('');
-        document.getElementById('stat-count').innerText = jugements.length;
-        document.getElementById('stat-money').innerText = jugements.reduce((a, b) => a + (b.amendeTotal || 0), 0).toLocaleString() + "$";
-        document.getElementById('stat-prison').innerText = jugements.reduce((a, b) => a + (b.prisonTotal || 0), 0);
-    }
+    // Créer un Utilisateur
+    document.getElementById('addUserForm').onsubmit = function(e) {
+        e.preventDefault();
+        const newUser = {
+            nom: document.getElementById('u_nom').value.toUpperCase(),
+            prenom: document.getElementById('u_prenom').value,
+            dob: document.getElementById('u_dob').value,
+            user: document.getElementById('u_user').value.toLowerCase(),
+            pass: document.getElementById('u_pass').value,
+            grade: document.getElementById('u_grade').value
+        };
+        
+        db.ref('users').push(newUser);
+        this.reset();
+        toggleOverlay('overlay-add-user', false);
+    };
 
-    function viewDossier(i) {
-        const j = jugements[i];
-        document.getElementById('j_rapport').value = j.rapport;
-        document.getElementById('j_nom').value = j.nom;
-        document.getElementById('j_date').value = j.date || "";
-        document.getElementById('j_instance').value = j.instance || "";
-        document.getElementById('j_info').value = j.info || "";
-        document.getElementById('j_obs').value = j.obs || "";
-        currentSelection = j.infractions || [];
-        renderCurrentSelection();
-        document.getElementById('save-btn').classList.add('hidden');
-        toggleOverlay('overlay-form', true);
-    }
-
+    // Ajouter une Loi au Code Pénal
     document.getElementById('addChefForm').onsubmit = function(e) {
         e.preventDefault();
-        chefs.push({
+        const loi = {
             nom: document.getElementById('c_nom').value,
             amende: parseInt(document.getElementById('c_amende').value),
             prison: parseInt(document.getElementById('c_prison').value),
             type: document.getElementById('j_delit').value,
             coef: parseInt(document.getElementById('c_coef').value)
-        });
-        localStorage.setItem('chefs', JSON.stringify(chefs));
+        };
+        db.ref('chefs').push(loi);
         this.reset();
-        renderChefs();
     };
 
-    function renderChefs() {
-        const tbody = document.getElementById('chefsTableBody');
-        if (!tbody) return;
-        tbody.innerHTML = chefs.map((c, i) => `
-            <tr>
-                <td>
-                    <span style="display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: bold; text-transform: uppercase; ${getBadgeStyle(c.type)}">
-                        ${c.type || 'Loi'}
-                    </span>
-                </td>
-                <td><b>${c.nom}</b></td>
-                <td>${c.amende.toLocaleString()}$</td>
-                <td>${c.prison} ans</td>
-                <td>${c.coef || 1}</td>
-                <td><button class="btn btn-danger" onclick="deleteChef(${i})">❌</button></td>
-            </tr>
-        `).join('');
+    // --- FONCTIONS SYSTÈME ---
+
+    function checkLogin() {
+        const userIn = document.getElementById('username').value.toLowerCase();
+        const passIn = document.getElementById('password').value;
+        const errorMsg = document.getElementById('login-error');
+
+        const foundUser = users.find(u => u.user === userIn && u.pass === passIn);
+
+        if (foundUser) {
+            document.getElementById('login-screen').style.display = 'none';
+            sessionStorage.setItem('isLoggedIn', 'true');
+            sessionStorage.setItem('currentUser', JSON.stringify(foundUser));
+            
+            // Masquer la carte direction si pas autorisé
+            const accessAuthorized = ["Juge Supérieur", "Direction"];
+            const dirCard = document.getElementById('card-direction');
+            if (dirCard) {
+                dirCard.style.display = accessAuthorized.includes(foundUser.grade) ? 'flex' : 'none';
+            }
+        } else {
+            errorMsg.style.display = 'block';
+            const box = document.querySelector('.glass-login');
+            box.style.transform = "translateX(10px)";
+            setTimeout(() => box.style.transform = "translateX(-10px)", 100);
+            setTimeout(() => box.style.transform = "translateX(0)", 200);
+        }
+    }
+
+    // Gestion des suppressions (Firebase utilise des clés, ici on simplifie en écrasant le tableau pour le RP)
+    function deleteUser(i) {
+        if(confirm("Supprimer cet accès ?")) {
+            users.splice(i, 1);
+            db.ref('users').set(users); 
+        }
     }
 
     function deleteChef(i) {
         if(confirm("Supprimer cette loi ?")) {
             chefs.splice(i, 1);
-            localStorage.setItem('chefs', JSON.stringify(chefs));
-            renderChefs();
+            db.ref('chefs').set(chefs);
         }
     }
 
-    function clearAll() {
-        if(confirm("Attention : Tout effacer ?")) {
-            localStorage.clear();
-            location.reload();
-        }
-    }
+    // --- RESTE DE TES FONCTIONS (showPage, toggleOverlay, etc.) ---
+    // Garde tes fonctions d'affichage (renderAll, renderUsers, renderChefs) 
+    // telles qu'elles sont, elles fonctionneront avec les nouvelles données.
 
-    function getBadgeStyle(type) {
-        switch(type) {
-            case 'Justice': return 'background: #f1f5f9; color: #475569;';
-            case 'Contravention': return 'background: #f1f5f9; color: #475569;';
-            case 'Délit Mineur': return 'background: #fef2f2; color: #ef4444; border: 1px solid #fee2e2;';
-            case 'Délit Majeur': return 'background: #fee2e2; color: #b91c1c; font-weight: 800;';
-            case 'Crime': return 'background: #7f1d1d; color: white;';
-            case 'Crime Fédéral': return 'background: #000000; color: #fbbf24; border: 1px solid #fbbf24;';
-            default: return 'background: #e2e8f0; color: #64748b;';
-        }
-    }
-
-    renderAll();
-    renderChefs();
-
-    // Configuration de tes liens par catégorie
-    const docDatabase = [
-        { category: 'greffier', title: 'Procédure Pénale', desc: 'Protocoles interventions', link: 'https://wiki.unityrp.io/books/le-legal/page/code-de-procedure-penale-san-andreas', icon: 'bx-file' },
-        { category: 'greffier', title: 'MDT', desc: 'Accès base de données', link: 'https://mdt.vauntcorp.com/#/login', icon: 'bx-data' },
-        { category: 'greffier', title: 'Vice de Procédure', desc: 'Fiches des nullités', link: 'https://docs.google.com/document/d/1O5Id0uug3Y4nzL50npucB_DVN0fPM_CgdLLM7ojD7To/edit?tab=t.0', icon: 'bx-data' },
-        { category: 'greffier', title: 'Objections', desc: 'Guide des audiences', link: 'https://docs.google.com/document/d/1JcJWEutZp64cPthsZgswm3CpXggXGvqbTlYFiLCD5Vc/edit', icon: 'bx-hand' },
-        { category: 'procureur', title: 'Code Pénal', desc: 'Articles et peines', link: 'https://wiki.unityrp.io/books/le-legal/page/code-penal-san-andreas', icon: 'bx-book-content' },
-        { category: 'procureur', title: 'Répertoire Jugements', desc: 'Historique complet', link: '#', icon: 'bx-archive' },
-        { category: 'juge', title: 'Vice de Procédure', desc: 'Fiches des nullités', link: 'https://docs.google.com/document/d/1O5Id0uug3Y4nzL50npucB_DVN0fPM_CgdLLM7ojD7To/edit', icon: 'bx-error-circle' },
-        { category: 'juge', title: 'Objections', desc: 'Guide des audiences', link: 'https://docs.google.com/document/d/1JcJWEutZp64cPthsZgswm3CpXggXGvqbTlYFiLCD5Vc/edit', icon: 'bx-hand' },
-        { category: 'direction', title: 'Gestion Staff', desc: 'Accès restreint', link: '#', icon: 'bx-shield-quarter' }
-    ];
-
-    function showDocCategory(cat) {
-        const container = document.getElementById('doc-links-container');
-        const filtered = cat === 'all' ? docDatabase : docDatabase.filter(d => d.category === cat);
-        
-        container.innerHTML = filtered.map(d => `
-            <a href="${d.link}" target="_blank" style="text-decoration:none; color:inherit;">
-                <div class="settings-card">
-                    <i class='bx ${d.icon}'></i>
-                    <h4 style="margin-top:10px">${d.title}</h4>
-                    <p style="font-size:12px; color:var(--text-muted); text-align:center">${d.desc}</p>
-                </div>
-            </a>
-        `).join('');
-
-        if(filtered.length === 0) {
-            container.innerHTML = '<p style="grid-column: span 3; text-align:center; color:var(--text-muted);">Aucun document dans cette catégorie.</p>';
-        }
-    }
-
-    // Initialise l'affichage au chargement
-    showDocCategory('all');
 </script>
-
 </body>
 </html>
