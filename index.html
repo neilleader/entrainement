@@ -427,148 +427,308 @@ select {
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
 <script>
-    // 1. CONFIGURATION
-    const firebaseConfig = {
-        databaseURL: "https://saje-1f42b-default-rtdb.europe-west1.firebasedatabase.app" // <--- METS TON URL ICI
-    };
+// 1. CONFIGURATION FIREBASE
+const firebaseConfig = {
+    databaseURL: "https://saje-1f42b-default-rtdb.europe-west1.firebasedatabase.app"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// 2. VARIABLES GLOBALES
+let jugements = [];
+let chefs = [];
+let users = [];
+let currentSelection = [];
+
+// Base de données des documents (catégories)
+const docDatabase = [
+    { title: "Code de Procédure", desc: "Règles de procédure pénale", cat: "all", icon: "bx-book-reader", link: "#" },
+    { title: "Grille de Peine", desc: "Calculateur officiel", cat: "juge", icon: "bx-calculator", link: "#" },
+    { title: "Modèle de Mandat", desc: "Perquisition et arrêt", cat: "procureur", icon: "bx-file-blank", link: "#" },
+    { title: "Rapport d'activité", desc: "Stats hebdomadaires", cat: "direction", icon: "bx-line-chart", link: "#" }
+];
+
+// --- SYNCHRONISATION EN TEMPS RÉEL ---
+
+db.ref('jugements').on('value', (snapshot) => {
+    const data = snapshot.val();
+    jugements = data ? Object.values(data) : [];
+    renderAll();
+    updateStats();
+});
+
+db.ref('chefs').on('value', (snapshot) => {
+    const data = snapshot.val();
+    chefs = data ? Object.values(data) : [];
+    renderChefs();
+});
+
+db.ref('users').on('value', (snapshot) => {
+    const data = snapshot.val();
+    users = data ? Object.values(data) : [
+        {"nom":"Admin","prenom":"Justice","user":"admin","pass":"1234","grade":"Direction","dob":"1990-01-01"}
+    ];
+    renderUsers();
+});
+
+// --- GESTION DE L'INTERFACE (Navigation) ---
+
+function showPage(pageId, navEl) {
+    // Cacher toutes les pages
+    document.querySelectorAll('main > div').forEach(div => div.classList.add('hidden'));
+    // Afficher la page demandée
+    document.getElementById('page-' + pageId).classList.remove('hidden');
     
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    // Gérer l'état actif de la sidebar
+    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+    if(navEl) navEl.classList.add('active');
 
-    // 2. VARIABLES GLOBALES (Synchronisées)
-    let jugements = [];
-    let chefs = [];
-    let users = [];
-    let currentSelection = [];
+    if(pageId === 'docuement') showDocCategory('all');
+}
 
-    // --- SYNCHRONISATION EN TEMPS RÉEL ---
+function toggleOverlay(id, show) {
+    document.getElementById(id).style.display = show ? 'flex' : 'none';
+}
 
-    // Écouter les Jugements
-    db.ref('jugements').on('value', (snapshot) => {
-        const data = snapshot.val();
-        jugements = data ? Object.values(data) : [];
-        renderAll();
-    });
+// --- LOGIQUE MÉTIER (Jugements & Recherche) ---
 
-    // Écouter le Code Pénal
-    db.ref('chefs').on('value', (snapshot) => {
-        const data = snapshot.val();
-        chefs = data ? Object.values(data) : [
-            {"nom":"Homicide","amende":50000,"prison":120,"type":"Crime","coef":1}
-        ];
-        renderChefs();
-    });
+function openForm() {
+    currentSelection = [];
+    document.getElementById('jugementForm').reset();
+    renderSelectedInfractions();
+    toggleOverlay('overlay-form', true);
+}
 
-    // Écouter les Utilisateurs
-    db.ref('users').on('value', (snapshot) => {
-        const data = snapshot.val();
-        // On s'assure qu'il y a toujours au moins l'admin par défaut s'il n'y a rien en base
-        users = data ? Object.values(data) : [
-            {"nom":"Admin","prenom":"Justice","user":"admin","pass":"1234","grade":"Direction","dob":"1990-01-01"}
-        ];
-        renderUsers();
-    });
+function searchInfraction() {
+    const query = document.getElementById('j_search').value.toLowerCase();
+    const resultsDiv = document.getElementById('searchResults');
+    
+    if (query.length < 2) {
+        resultsDiv.style.display = 'none';
+        return;
+    }
 
-    // --- FONCTIONS DE SAUVEGARDE (PUSH VERS CLOUD) ---
+    const filtered = chefs.filter(c => c.nom.toLowerCase().includes(query));
+    
+    resultsDiv.innerHTML = filtered.map(c => `
+        <div class="search-item" onclick="addInfraction('${c.nom}')">
+            ${c.nom} <span style="color:var(--accent)">(${c.amende}$, ${c.prison} ans)</span>
+        </div>
+    `).join('');
+    
+    resultsDiv.style.display = filtered.length > 0 ? 'block' : 'none';
+}
 
-    // Enregistrer un Jugement
-    document.getElementById('jugementForm').onsubmit = function(e) {
-        e.preventDefault();
-        const nouveau = {
-            rapport: document.getElementById('j_rapport').value,
-            nom: document.getElementById('j_nom').value,
-            date: document.getElementById('j_date').value,
-            instance: document.getElementById('j_instance').value,
-            info: document.getElementById('j_info').value,
-            obs: document.getElementById('j_obs').value,
-            amendeTotal: currentSelection.reduce((a, b) => a + b.amende, 0),
-            prisonTotal: currentSelection.reduce((a, b) => a + b.prison, 0),
-            infractions: [...currentSelection]
-        };
+function addInfraction(name) {
+    const item = chefs.find(c => c.nom === name);
+    if (item) {
+        currentSelection.push(item);
+        renderSelectedInfractions();
+        document.getElementById('j_search').value = "";
+        document.getElementById('searchResults').style.display = 'none';
+    }
+}
+
+function removeInfraction(index) {
+    currentSelection.splice(index, 1);
+    renderSelectedInfractions();
+}
+
+function renderSelectedInfractions() {
+    const list = document.getElementById('selectedList');
+    const totalMoney = currentSelection.reduce((a, b) => a + b.amende, 0);
+    const totalPrison = currentSelection.reduce((a, b) => a + b.prison, 0);
+
+    if (currentSelection.length === 0) {
+        list.innerHTML = `<p style="color:var(--text-muted); font-size:13px; text-align:center;">Aucune infraction sélectionnée</p>`;
+    } else {
+        list.innerHTML = currentSelection.map((inf, i) => `
+            <div class="infraction-tag">
+                <span><b>${inf.nom}</b> (${inf.amende}$, ${inf.prison} ans)</span>
+                <i class='bx bx-x-circle remove-tag' onclick="removeInfraction(${i})"></i>
+            </div>
+        `).join('');
+    }
+
+    document.getElementById('display-total-money').innerText = totalMoney.toLocaleString();
+    document.getElementById('display-total-prison').innerText = totalPrison;
+}
+
+// --- RENDU DES TABLEAUX ---
+
+function renderAll() {
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = jugements.map((j, i) => `
+        <tr>
+            <td>#${j.rapport}</td>
+            <td><b>${j.nom}</b></td>
+            <td>${j.amendeTotal.toLocaleString()}$</td>
+            <td>${j.prisonTotal} ans</td>
+            <td><button class="btn btn-view" onclick="viewJugement(${i})">Voir</button></td>
+        </tr>
+    `).join('');
+}
+
+function renderChefs() {
+    const tbody = document.getElementById('chefsTableBody');
+    tbody.innerHTML = chefs.map((c, i) => `
+        <tr>
+            <td>${c.nom}</td>
+            <td>${c.amende}$</td>
+            <td>${c.prison} ans</td>
+            <td>${c.type}</td>
+            <td><button class="btn btn-danger" onclick="deleteChef(${i})">Supprimer</button></td>
+        </tr>
+    `).join('');
+}
+
+function renderUsers() {
+    const tbody = document.getElementById('userTableBody');
+    tbody.innerHTML = users.map((u, i) => `
+        <tr>
+            <td>${u.nom} ${u.prenom}</td>
+            <td><span class="btn btn-view" style="font-size:10px">${u.grade}</span></td>
+            <td>${u.user}</td>
+            <td><button class="btn btn-danger" onclick="deleteUser(${i})">Supprimer</button></td>
+        </tr>
+    `).join('');
+}
+
+function updateStats() {
+    document.getElementById('stat-count').innerText = jugements.length;
+    const totalMoney = jugements.reduce((a, b) => a + b.amendeTotal, 0);
+    const totalPrison = jugements.reduce((a, b) => a + b.prisonTotal, 0);
+    document.getElementById('stat-money').innerText = totalMoney.toLocaleString() + "$";
+    document.getElementById('stat-prison').innerText = totalPrison;
+}
+
+// --- ESPACE DOCUMENTS ---
+
+function showDocCategory(cat) {
+    const container = document.getElementById('doc-links-container');
+    const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
+    const userGrade = currentUser.grade || "";
+    const accessAuthorized = ["Juge Supérieur", "Direction"];
+
+    if (cat === 'direction' && !accessAuthorized.includes(userGrade)) {
+        container.innerHTML = `<div style="grid-column: span 3; text-align:center; padding:50px; background:#fee2e2; border-radius:16px; color:#ef4444;">Accès Refusé</div>`;
+        return;
+    }
+
+    let filtered = cat === 'all' ? docDatabase : docDatabase.filter(d => d.cat === cat);
+    if (cat === 'all' && !accessAuthorized.includes(userGrade)) {
+        filtered = filtered.filter(d => d.cat !== 'direction');
+    }
+
+    container.innerHTML = filtered.map(d => `
+        <div class="settings-card">
+            <i class='bx ${d.icon}'></i>
+            <h4>${d.title}</h4>
+            <p style="font-size:12px; color:var(--text-muted)">${d.desc}</p>
+        </div>
+    `).join('');
+}
+
+// --- AUTHENTIFICATION ---
+
+function checkLogin() {
+    const userIn = document.getElementById('username').value.toLowerCase();
+    const passIn = document.getElementById('password').value;
+    const errorMsg = document.getElementById('login-error');
+
+    const foundUser = users.find(u => u.user === userIn && u.pass === passIn);
+
+    if (foundUser) {
+        document.getElementById('login-screen').style.display = 'none';
+        sessionStorage.setItem('isLoggedIn', 'true');
+        sessionStorage.setItem('currentUser', JSON.stringify(foundUser));
         
-        db.ref('jugements').push(nouveau); // Envoi au cloud
-        toggleOverlay('overlay-form', false);
-    };
-
-    // Créer un Utilisateur
-    document.getElementById('addUserForm').onsubmit = function(e) {
-        e.preventDefault();
-        const newUser = {
-            nom: document.getElementById('u_nom').value.toUpperCase(),
-            prenom: document.getElementById('u_prenom').value,
-            dob: document.getElementById('u_dob').value,
-            user: document.getElementById('u_user').value.toLowerCase(),
-            pass: document.getElementById('u_pass').value,
-            grade: document.getElementById('u_grade').value
-        };
-        
-        db.ref('users').push(newUser);
-        this.reset();
-        toggleOverlay('overlay-add-user', false);
-    };
-
-    // Ajouter une Loi au Code Pénal
-    document.getElementById('addChefForm').onsubmit = function(e) {
-        e.preventDefault();
-        const loi = {
-            nom: document.getElementById('c_nom').value,
-            amende: parseInt(document.getElementById('c_amende').value),
-            prison: parseInt(document.getElementById('c_prison').value),
-            type: document.getElementById('j_delit').value,
-            coef: parseInt(document.getElementById('c_coef').value)
-        };
-        db.ref('chefs').push(loi);
-        this.reset();
-    };
-
-    // --- FONCTIONS SYSTÈME ---
-
-    function checkLogin() {
-        const userIn = document.getElementById('username').value.toLowerCase();
-        const passIn = document.getElementById('password').value;
-        const errorMsg = document.getElementById('login-error');
-
-        const foundUser = users.find(u => u.user === userIn && u.pass === passIn);
-
-        if (foundUser) {
-            document.getElementById('login-screen').style.display = 'none';
-            sessionStorage.setItem('isLoggedIn', 'true');
-            sessionStorage.setItem('currentUser', JSON.stringify(foundUser));
-            
-            // Masquer la carte direction si pas autorisé
-            const accessAuthorized = ["Juge Supérieur", "Direction"];
-            const dirCard = document.getElementById('card-direction');
-            if (dirCard) {
-                dirCard.style.display = accessAuthorized.includes(foundUser.grade) ? 'flex' : 'none';
-            }
-        } else {
-            errorMsg.style.display = 'block';
-            const box = document.querySelector('.glass-login');
-            box.style.transform = "translateX(10px)";
-            setTimeout(() => box.style.transform = "translateX(-10px)", 100);
-            setTimeout(() => box.style.transform = "translateX(0)", 200);
-        }
+        const accessAuthorized = ["Juge Supérieur", "Direction"];
+        const dirCard = document.getElementById('card-direction');
+        if (dirCard) dirCard.style.display = accessAuthorized.includes(foundUser.grade) ? 'flex' : 'none';
+    } else {
+        errorMsg.style.display = 'block';
     }
+}
 
-    // Gestion des suppressions (Firebase utilise des clés, ici on simplifie en écrasant le tableau pour le RP)
-    function deleteUser(i) {
-        if(confirm("Supprimer cet accès ?")) {
-            users.splice(i, 1);
-            db.ref('users').set(users); 
-        }
+function openUserManagement() {
+    const user = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
+    if (["Juge Supérieur", "Direction"].includes(user.grade)) {
+        toggleOverlay('overlay-users', true);
+    } else {
+        alert("Accès réservé à la Direction.");
     }
+}
 
-    function deleteChef(i) {
-        if(confirm("Supprimer cette loi ?")) {
-            chefs.splice(i, 1);
-            db.ref('chefs').set(chefs);
-        }
+function logout() {
+    sessionStorage.clear();
+    location.reload();
+}
+
+// --- SOUMISSION DES FORMULAIRES ---
+
+document.getElementById('jugementForm').onsubmit = function(e) {
+    e.preventDefault();
+    const nouveau = {
+        rapport: document.getElementById('j_rapport').value,
+        nom: document.getElementById('j_nom').value,
+        date: document.getElementById('j_date').value,
+        instance: document.getElementById('j_instance').value,
+        info: document.getElementById('j_info').value,
+        obs: document.getElementById('j_obs').value,
+        amendeTotal: currentSelection.reduce((a, b) => a + b.amende, 0),
+        prisonTotal: currentSelection.reduce((a, b) => a + b.prison, 0),
+        infractions: [...currentSelection]
+    };
+    db.ref('jugements').push(nouveau);
+    toggleOverlay('overlay-form', false);
+};
+
+document.getElementById('addUserForm').onsubmit = function(e) {
+    e.preventDefault();
+    const newUser = {
+        nom: document.getElementById('u_nom').value.toUpperCase(),
+        prenom: document.getElementById('u_prenom').value,
+        dob: document.getElementById('u_dob').value,
+        user: document.getElementById('u_user').value.toLowerCase(),
+        pass: document.getElementById('u_pass').value,
+        grade: document.getElementById('u_grade').value
+    };
+    db.ref('users').push(newUser);
+    this.reset();
+    toggleOverlay('overlay-add-user', false);
+};
+
+document.getElementById('addChefForm').onsubmit = function(e) {
+    e.preventDefault();
+    const loi = {
+        nom: document.getElementById('c_nom').value,
+        amende: parseInt(document.getElementById('c_amende').value),
+        prison: parseInt(document.getElementById('c_prison').value),
+        type: document.getElementById('j_delit').value,
+        coef: parseInt(document.getElementById('c_coef').value)
+    };
+    db.ref('chefs').push(loi);
+    this.reset();
+};
+
+function deleteChef(i) {
+    if(confirm("Supprimer cette loi ?")) {
+        const key = Object.keys(chefs)[i]; // Firebase works with keys
+        db.ref('chefs').child(Object.keys(jugements)[i]).remove(); // Note: Simple version
+        // For simplicity with your array logic:
+        chefs.splice(i, 1);
+        db.ref('chefs').set(chefs);
     }
+}
 
-    // --- RESTE DE TES FONCTIONS (showPage, toggleOverlay, etc.) ---
-    // Garde tes fonctions d'affichage (renderAll, renderUsers, renderChefs) 
-    // telles qu'elles sont, elles fonctionneront avec les nouvelles données.
-
+function deleteUser(i) {
+    if(confirm("Supprimer cet accès ?")) {
+        users.splice(i, 1);
+        db.ref('users').set(users);
+    }
+}
 </script>
 </body>
 </html>
