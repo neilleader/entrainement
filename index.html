@@ -284,7 +284,7 @@ const poster = url => {
 
 function cardHtml(c) {
   const [ic,tag] = TYPES[c.type] || TYPES.lien;
-  const video = c.type === 'video';
+  const video = c.type === 'video' || !!embedUrl(c.url) || isVideoFile(c.url);
   const img = video ? poster(c.url) : '';
   const top = video ? `<div class="thumb">${img?`<img src="${esc(img)}" alt="" loading="lazy" onerror="this.remove()">`:''}<span class="play"><i class="fas fa-play"></i></span></div>` : '';
   const inner = `${top}<div class="card-body">${video?'':`<div class="ico"><i class="fas ${ic}"></i></div>`}<h3>${esc(c.title)}</h3>${c.desc?`<p>${esc(c.desc)}</p>`:''}${tag?`<span class="tag">${tag}</span>`:''}</div>`;
@@ -307,22 +307,45 @@ function cardHtml(c) {
 
 const player = document.getElementById('player');
 const screenVideo = player.querySelector('video');
-document.getElementById('content').addEventListener('click', e => {
-  const a = e.target.closest('a.card');
-  if (!a || !isVideoFile(a.href) || e.ctrlKey || e.metaKey || e.shiftKey) return;
-  e.preventDefault();
-  document.getElementById('player-title').innerText = a.querySelector('h3').innerText;
-  document.getElementById('player-error').classList.add('hidden');
-  player.querySelector('#player-error a').href = a.href;
-  screenVideo.src = a.href;
+const frame = document.getElementById('player-frame');
+const perr = document.getElementById('player-error');
+
+function openVideo(c) {
+  document.getElementById('player-title').innerText = c.title;
+  perr.classList.add('hidden');
+  screenVideo.classList.add('hidden');
+  frame.classList.add('hidden');
+  if (isVideoFile(c.url)) {
+    screenVideo.classList.remove('hidden');
+    screenVideo.src = c.url;
+    player.showModal();
+    screenVideo.play().catch(() => {});
+    return;
+  }
+  const emb = embedUrl(c.url);
+  if (emb) { frame.src = emb; frame.classList.remove('hidden'); }
+  else perr.classList.remove('hidden');
   player.showModal();
-  screenVideo.play().catch(() => {});
+}
+function cardClick(e) {
+  const el = e.target.closest('.card[data-id]');
+  if (!el) return;
+  const c = cards.find(x => x.id === el.dataset.id);
+  if (c) openVideo(c);
+}
+const contentEl = document.getElementById('content');
+contentEl.addEventListener('click', cardClick);
+contentEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cardClick(e); }
 });
-screenVideo.addEventListener('error', () => { if (screenVideo.getAttribute('src')) document.getElementById('player-error').classList.remove('hidden'); });
+
+screenVideo.addEventListener('error', () => { if (screenVideo.getAttribute('src')) perr.classList.remove('hidden'); });
 document.getElementById('player-close').addEventListener('click', () => player.close());
 player.addEventListener('click', e => { if (e.target === player) player.close(); });
-player.addEventListener('close', () => { screenVideo.pause(); screenVideo.removeAttribute('src'); screenVideo.load(); });
-
+player.addEventListener('close', () => {
+  screenVideo.pause(); screenVideo.removeAttribute('src'); screenVideo.load();
+  frame.removeAttribute('src');
+});
 function cardEditorHtml() {
   return `<div class="panel">
     <h3>Ajouter une case</h3>
