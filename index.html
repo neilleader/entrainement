@@ -295,15 +295,6 @@ function cardHtml(c) {
     ${can(CARD_EDITOR_ROLES)?`<button class="del" onclick="deleteCard('${esc(c.id)}')" aria-label="Supprimer la case"><i class="fas fa-trash-can"></i></button>`:''}</div>`;
 }
 
-function cardHtml(c) {
-  const [ic,tag] = TYPES[c.type] || TYPES.lien;
-  const video = c.type === 'video';
-  const img = video ? poster(c.url) : '';
-  const top = video ? `<div class="thumb">${img?`<img src="${esc(img)}" alt="" loading="lazy" onerror="this.remove()">`:''}<span class="play"><i class="fas fa-play"></i></span></div>` : '';
-  return `<div class="cardwrap"><a class="card" href="${esc(c.url)}" target="_blank" rel="noopener">${top}
-    <div class="card-body">${video?'':`<div class="ico"><i class="fas ${ic}"></i></div>`}<h3>${esc(c.title)}</h3>${c.desc?`<p>${esc(c.desc)}</p>`:''}${tag?`<span class="tag">${tag}</span>`:''}</div></a>
-    ${can(CARD_EDITOR_ROLES)?`<button class="del" onclick="deleteCard('${esc(c.id)}')" aria-label="Supprimer la case"><i class="fas fa-trash-can"></i></button>`:''}</div>`;
-}
 
 const player = document.getElementById('player');
 const screenVideo = player.querySelector('video');
