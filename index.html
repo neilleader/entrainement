@@ -272,7 +272,17 @@ function embedUrl(url) {
   if ((m = url.match(/drive\.google\.com\/file\/d\/([\w-]+)/)) || (m = url.match(/drive\.google\.com\/open\?id=([\w-]+)/))) return `https://drive.google.com/file/d/${m[1]}/preview`;
   if ((m = url.match(/vimeo\.com\/(?:video\/)?(\d+)/))) return `https://player.vimeo.com/video/${m[1]}`;
   if ((m = url.match(/mega\.nz\/(?:file\/|embed\/)([^#]+)#(.+)/))) return `https://mega.nz/embed/${m[1]}#${m[2]}`;
+  if ((m = url.match(/dailymotion\.com\/video\/(\w+)/)) || (m = url.match(/dai\.ly\/(\w+)/))) return `https://www.dailymotion.com/embed/video/${m[1]}`;
+  if ((m = url.match(/streamable\.com\/(?:e\/)?(\w+)/))) return `https://streamable.com/e/${m[1]}`;
   return '';
+}
+
+// Dropbox : transforme le lien de partage en lien direct lisible
+function directUrl(url) {
+  if (/dropbox\.com/.test(url)) {
+    return url.replace(/[?&]dl=0/, '').replace('www.dropbox.com', 'dl.dropboxusercontent.com') + (url.includes('?') ? '&' : '?') + 'raw=1';
+  }
+  return url;
 }
 const poster = url => {
   let m;
@@ -306,16 +316,17 @@ function openVideo(c) {
   perr.classList.add('hidden');
   screenVideo.classList.add('hidden');
   frame.classList.add('hidden');
-  if (isVideoFile(c.url)) {
+  const src = directUrl(c.url);
+  if (isVideoFile(src) || /dropbox/.test(c.url)) {
     screenVideo.classList.remove('hidden');
-    screenVideo.src = c.url;
+    screenVideo.src = src;
     player.showModal();
     screenVideo.play().catch(() => {});
     return;
   }
   const emb = embedUrl(c.url);
-  if (emb) { frame.src = emb; frame.classList.remove('hidden'); }
-  else perr.classList.remove('hidden');
+  frame.src = emb || c.url;          // dernier recours : on tente d'afficher la page telle quelle
+  frame.classList.remove('hidden');
   player.showModal();
 }
 function cardClick(e) {
