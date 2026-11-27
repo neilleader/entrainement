@@ -225,7 +225,7 @@ section.content{flex:1;overflow-y:auto;padding:28px 40px 56px}
 <dialog id="player" aria-labelledby="player-title">
   <div class="player-bar"><h3 id="player-title"></h3><button type="button" id="player-close" aria-label="Fermer la vidéo"><i class="fas fa-xmark"></i></button></div>
   <video controls playsinline></video>
-  <iframe id="player-frame" class="hidden" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="no-referrer"></iframe>
+  <iframe id="player-frame" class="hidden" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
   <p id="player-error" class="hidden">Cette vidéo ne peut pas être lue ici.</p>
 </dialog>
 
@@ -268,7 +268,7 @@ const isVideoFile = url => /\.(mp4|webm)(\?.*)?$/i.test(url);
 
 function embedUrl(url) {
   let m;
-  if ((m = url.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/))) return `https://www.youtube-nocookie.com/embed/${m[1]}?rel=0`;
+  if ((m = url.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/))) return `https://www.youtube.com/embed/${m[1]}?rel=0&playsinline=1`;
   if ((m = url.match(/drive\.google\.com\/file\/d\/([\w-]+)/)) || (m = url.match(/drive\.google\.com\/open\?id=([\w-]+)/))) return `https://drive.google.com/file/d/${m[1]}/preview`;
   if ((m = url.match(/vimeo\.com\/(?:video\/)?(\d+)/))) return `https://player.vimeo.com/video/${m[1]}`;
   if ((m = url.match(/mega\.nz\/(?:file\/|embed\/)([^#]+)#(.+)/))) return `https://mega.nz/embed/${m[1]}#${m[2]}`;
