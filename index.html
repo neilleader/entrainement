@@ -110,6 +110,8 @@ section.content{flex:1;overflow-y:auto;padding:28px 40px 56px}
 .player-bar button{width:38px;height:38px;flex-shrink:0;border:0;border-radius:9px;background:rgba(255,255,255,.14);color:var(--white);font-size:1.1rem;cursor:pointer}
 .player-bar button:hover{background:var(--red)}
 #player video{display:block;width:100%;max-height:72dvh;background:#000}
+#player iframe{display:block;width:100%;aspect-ratio:16/9;border:0;background:#000}
+.card[role=button]{cursor:pointer}
 #player-error{margin:0;padding:14px 18px}
 #player-error a{text-decoration:underline;font-weight:700}
 
@@ -223,7 +225,8 @@ section.content{flex:1;overflow-y:auto;padding:28px 40px 56px}
 <dialog id="player" aria-labelledby="player-title">
   <div class="player-bar"><h3 id="player-title"></h3><button type="button" id="player-close" aria-label="Fermer la vidéo"><i class="fas fa-xmark"></i></button></div>
   <video controls playsinline></video>
-  <p id="player-error" class="hidden">Cette vidéo ne se lit pas ici. <a target="_blank" rel="noopener">Ouvrir le lien</a></p>
+  <iframe id="player-frame" class="hidden" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="no-referrer"></iframe>
+  <p id="player-error" class="hidden">Cette vidéo ne peut pas être lue ici.</p>
 </dialog>
 
 <script>
@@ -262,9 +265,35 @@ const short = id => TABS[id].title.replace('Première ', '');
 
 
 const isVideoFile = url => /\.(mp4|webm)(\?.*)?$/i.test(url);
-// Image d'aperçu pour les vidéos hébergées sur Cloudinary
-const poster = url => /^https:\/\/res\.cloudinary\.com\/[^/]+\/video\/upload\//.test(url) && isVideoFile(url)
-  ? url.replace('/video/upload/', '/video/upload/so_0,w_640,h_360,c_fill/').replace(/\.(mp4|webm)(\?.*)?$/i, '.jpg') : '';
+
+function embedUrl(url) {
+  let m;
+  if ((m = url.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/))) return `https://www.youtube-nocookie.com/embed/${m[1]}?rel=0`;
+  if ((m = url.match(/drive\.google\.com\/file\/d\/([\w-]+)/)) || (m = url.match(/drive\.google\.com\/open\?id=([\w-]+)/))) return `https://drive.google.com/file/d/${m[1]}/preview`;
+  if ((m = url.match(/vimeo\.com\/(?:video\/)?(\d+)/))) return `https://player.vimeo.com/video/${m[1]}`;
+  if ((m = url.match(/mega\.nz\/(?:file\/|embed\/)([^#]+)#(.+)/))) return `https://mega.nz/embed/${m[1]}#${m[2]}`;
+  return '';
+}
+const poster = url => {
+  let m;
+  if (/^https:\/\/res\.cloudinary\.com\/[^/]+\/video\/upload\//.test(url) && isVideoFile(url))
+    return url.replace('/video/upload/', '/video/upload/so_0,w_640,h_360,c_fill/').replace(/\.(mp4|webm)(\?.*)?$/i, '.jpg');
+  if ((m = url.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/))) return `https://img.youtube.com/vi/${m[1]}/hqdefault.jpg`;
+  return '';
+};
+
+function cardHtml(c) {
+  const [ic,tag] = TYPES[c.type] || TYPES.lien;
+  const video = c.type === 'video';
+  const img = video ? poster(c.url) : '';
+  const top = video ? `<div class="thumb">${img?`<img src="${esc(img)}" alt="" loading="lazy" onerror="this.remove()">`:''}<span class="play"><i class="fas fa-play"></i></span></div>` : '';
+  const inner = `${top}<div class="card-body">${video?'':`<div class="ico"><i class="fas ${ic}"></i></div>`}<h3>${esc(c.title)}</h3>${c.desc?`<p>${esc(c.desc)}</p>`:''}${tag?`<span class="tag">${tag}</span>`:''}</div>`;
+  const box = video
+    ? `<div class="card" role="button" tabindex="0" data-id="${esc(c.id)}">${inner}</div>`
+    : `<a class="card" href="${esc(c.url)}" target="_blank" rel="noopener">${inner}</a>`;
+  return `<div class="cardwrap">${box}
+    ${can(CARD_EDITOR_ROLES)?`<button class="del" onclick="deleteCard('${esc(c.id)}')" aria-label="Supprimer la case"><i class="fas fa-trash-can"></i></button>`:''}</div>`;
+}
 
 function cardHtml(c) {
   const [ic,tag] = TYPES[c.type] || TYPES.lien;
